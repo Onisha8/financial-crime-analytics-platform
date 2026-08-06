@@ -5,13 +5,26 @@ from data_generator import engine
 random.seed(42)
 
 cases = pd.read_sql("""
-SELECT
-    case_id,
-    customer_id,
-    risk_rating,
-    case_type
-FROM core.cases
+    SELECT
+        c.case_id,
+        c.customer_id,
+        c.risk_rating,
+        c.case_type
+    FROM core.cases c
+    LEFT JOIN core.sar_reports s
+        ON c.case_id = s.case_id
+    WHERE s.sar_id IS NULL
 """, engine)
+
+max_sar = pd.read_sql("""
+    SELECT COALESCE(
+        MAX(CAST(REPLACE(sar_id, 'SAR', '') AS BIGINT)),
+        0
+    ) AS max_sar
+    FROM core.sar_reports
+""", engine)
+
+max_sar = int(max_sar.iloc[0]["max_sar"])
 
 rows = []
 
@@ -28,7 +41,7 @@ for _, case in cases.iterrows():
     if random.random() < probability:
 
         rows.append({
-            "sar_id": f"SAR{len(rows)+1:08d}",
+            "sar_id": f"SAR{max_sar + len(rows) + 1:08d}",
             "case_id": case["case_id"],
             "customer_id": case["customer_id"],
             "filing_date": pd.Timestamp("2026-07-15") + pd.Timedelta(days=random.randint(0,60)),
