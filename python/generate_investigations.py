@@ -48,12 +48,24 @@ for _, alert in alerts.iterrows():
         weights=[45, 20, 15, 20]
     )[0]
 
+    investigation_start = (
+        pd.Timestamp("2026-01-01")
+        + pd.Timedelta(days=random.randint(0, 180))
+    )
+
+    investigation_duration = random.randint(1, 30)
+
+    investigation_end = (
+        investigation_start
+        + pd.Timedelta(days=investigation_duration)
+    )
+
     rows.append({
         "investigation_id": f"INV{max_id + len(rows) + 1:09d}",
         "alert_id": alert["alert_id"],
-        "investigator_id": random.choice(employee_ids),
-        "investigation_start": pd.Timestamp("2026-01-01") + pd.Timedelta(days=random.randint(0,180)),
-        "investigation_end": pd.Timestamp("2026-01-01") + pd.Timedelta(days=random.randint(1,185)),
+        "investigator_id": None,
+        "investigation_start": investigation_start,
+        "investigation_end": investigation_end,
         "disposition": disposition,
         "notes": f"Investigation completed with disposition: {disposition}"
     })
