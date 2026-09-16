@@ -48,17 +48,33 @@ for _, alert in alerts.iterrows():
         weights=[45, 20, 15, 20]
     )[0]
 
+    # Approximately 15% of investigations remain open
+    is_open = random.random() < 0.15
+
     investigation_start = (
-        pd.Timestamp("2026-01-01")
-        + pd.Timedelta(days=random.randint(0, 180))
+    pd.Timestamp("2026-01-01")
+    + pd.Timedelta(days=random.randint(0, 180))
     )
 
-    investigation_duration = random.randint(1, 30)
+    if is_open:
+        investigation_end = None
+        disposition = None
 
-    investigation_end = (
-        investigation_start
-        + pd.Timedelta(days=investigation_duration)
-    )
+    else:
+        investigation_duration = random.randint(1, 30)
+
+        investigation_end = (investigation_start + pd.Timedelta(days=investigation_duration))
+
+        disposition = random.choices(
+            [
+                "False Positive",
+                "Escalated",
+                "Monitoring Required",
+                "Closed - No Issue"
+            ],
+            weights=[45, 20, 15, 20],
+            k=1
+        )[0]
 
     rows.append({
         "investigation_id": f"INV{max_id + len(rows) + 1:09d}",
