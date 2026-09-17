@@ -26,112 +26,59 @@
 /* ============================================================
    29. DISPOSITION & FALSE-POSITIVE ANALYSIS
    ============================================================ */
-
 SELECT
     e.employee_id,
     e.employee_name,
     e.role_name,
-
-    COUNT(*) FILTER (
-        WHERE i.investigation_end IS NOT NULL
-    ) AS completed_investigations,
-
-    COUNT(*) FILTER (
-        WHERE i.disposition = 'False Positive'
-    ) AS false_positives,
-
-    COUNT(*) FILTER (
-        WHERE i.disposition = 'Closed - No Issue'
-    ) AS closed_no_issue,
-
-    COUNT(*) FILTER (
-        WHERE i.disposition = 'Monitoring Required'
-    ) AS monitoring_required,
-
-    COUNT(*) FILTER (
-        WHERE i.disposition = 'Escalated'
-    ) AS escalated,
-
-    ROUND(
-        100.0 *
-        COUNT(*) FILTER (
-            WHERE i.disposition = 'False Positive'
-        )
+    COUNT(*) FILTER (WHERE i.investigation_end IS NOT NULL) AS completed_investigations,
+    COUNT(*) FILTER (WHERE i.disposition = 'False Positive') AS false_positives,
+    COUNT(*) FILTER (WHERE i.disposition = 'Closed - No Issue') AS closed_no_issue,
+    COUNT(*) FILTER (WHERE i.disposition = 'Monitoring Required') AS monitoring_required,
+    COUNT(*) FILTER (WHERE i.disposition = 'Escalated') AS escalated,
+    ROUND(100.0 *COUNT(*) FILTER (WHERE i.disposition = 'False Positive')
         /
-        NULLIF(
-            COUNT(*) FILTER (
-                WHERE i.investigation_end IS NOT NULL
-            ), 0
-        ),
-        2
+        NULLIF(COUNT(*) FILTER ( WHERE i.investigation_end IS NOT NULL), 0), 2
     ) AS false_positive_pct
-
 FROM core.employees e
-
 JOIN core.investigations i
     ON e.employee_id = i.investigator_id
-
 WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
 )
-
 GROUP BY
     e.employee_id,
     e.employee_name,
     e.role_name
-
 ORDER BY false_positive_pct DESC;
 
 
 /* ============================================================
    30. ESCALATION ANALYSIS
    ============================================================ */
-
 SELECT
     e.employee_id,
     e.employee_name,
     e.role_name,
-
-    COUNT(*) FILTER (
-        WHERE i.investigation_end IS NOT NULL
-    ) AS completed_investigations,
-
-    COUNT(*) FILTER (
-        WHERE i.disposition = 'Escalated'
-    ) AS escalated_investigations,
-
-    ROUND(
-        100.0 *
-        COUNT(*) FILTER (
-            WHERE i.disposition = 'Escalated'
-        )
+    COUNT(*) FILTER (WHERE i.investigation_end IS NOT NULL) AS completed_investigations,
+    COUNT(*) FILTER (WHERE i.disposition = 'Escalated') AS escalated_investigations,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE i.disposition = 'Escalated')
         /
-        NULLIF(
-            COUNT(*) FILTER (
-                WHERE i.investigation_end IS NOT NULL
-            ), 0
-        ),
-        2
+        NULLIF(COUNT(*) FILTER (WHERE i.investigation_end IS NOT NULL), 0), 2
     ) AS escalation_rate_pct
-
 FROM core.employees e
-
 JOIN core.investigations i
     ON e.employee_id = i.investigator_id
-
 WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
 )
-
 GROUP BY
     e.employee_id,
     e.employee_name,
     e.role_name
-
 ORDER BY escalation_rate_pct DESC;
 
 
@@ -146,45 +93,25 @@ SELECT
     e.employee_id,
     e.employee_name,
     e.role_name,
-
-    COUNT(DISTINCT i.investigation_id) FILTER (
-        WHERE i.investigation_end IS NOT NULL
-    ) AS completed_investigations,
-
-    COUNT(DISTINCT c.case_id)
-        AS cases_created,
-
-    ROUND(
-        100.0 *
-        COUNT(DISTINCT c.case_id)
+    COUNT(DISTINCT i.investigation_id) FILTER (WHERE i.investigation_end IS NOT NULL) AS completed_investigations,
+    COUNT(DISTINCT c.case_id) AS cases_created,
+    ROUND(100.0 * COUNT(DISTINCT c.case_id)
         /
-        NULLIF(
-            COUNT(DISTINCT i.investigation_id) FILTER (
-                WHERE i.investigation_end IS NOT NULL
-            ), 0
-        ),
-        2
-    ) AS case_conversion_pct
-
+        NULLIF(COUNT(DISTINCT i.investigation_id) FILTER (WHERE i.investigation_end IS NOT NULL), 0), 2) AS case_conversion_pct
 FROM core.employees e
-
 JOIN core.investigations i
     ON e.employee_id = i.investigator_id
-
 LEFT JOIN core.cases c
     ON i.investigation_id = c.investigation_id
-
 WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
 )
-
 GROUP BY
     e.employee_id,
     e.employee_name,
     e.role_name
-
 ORDER BY case_conversion_pct DESC;
 
 
@@ -199,55 +126,31 @@ SELECT
     e.employee_id,
     e.employee_name,
     e.role_name,
-
-    COUNT(DISTINCT c.case_id)
-        AS total_cases,
-
-    COUNT(DISTINCT s.sar_id)
-        AS sar_reports,
-
-    ROUND(
-        100.0 *
-        COUNT(DISTINCT s.sar_id)
+    COUNT(DISTINCT c.case_id) AS total_cases,
+    COUNT(DISTINCT s.sar_id) AS sar_reports,
+    ROUND(100.0 *COUNT(DISTINCT s.sar_id)
         /
-        NULLIF(COUNT(DISTINCT c.case_id), 0),
-        2
-    ) AS case_to_sar_conversion_pct,
-
-    ROUND(
-        100.0 *
-        COUNT(DISTINCT s.sar_id)
+        NULLIF(COUNT(DISTINCT c.case_id), 0),2) AS case_to_sar_conversion_pct,
+    ROUND(100.0 *COUNT(DISTINCT s.sar_id)
         /
-        NULLIF(
-            COUNT(DISTINCT i.investigation_id) FILTER (
-                WHERE i.investigation_end IS NOT NULL
-            ), 0
-        ),
-        2
+        NULLIF(COUNT(DISTINCT i.investigation_id) FILTER (WHERE i.investigation_end IS NOT NULL), 0),2
     ) AS investigation_to_sar_conversion_pct
-
 FROM core.employees e
-
 JOIN core.investigations i
     ON e.employee_id = i.investigator_id
-
 LEFT JOIN core.cases c
     ON i.investigation_id = c.investigation_id
-
 LEFT JOIN core.sar_reports s
     ON c.case_id = s.case_id
-
 WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
 )
-
 GROUP BY
     e.employee_id,
     e.employee_name,
     e.role_name
-
 ORDER BY case_to_sar_conversion_pct DESC;
 
 
@@ -258,53 +161,35 @@ ORDER BY case_to_sar_conversion_pct DESC;
    ============================================================ */
 
 WITH action_counts AS (
-
     SELECT
         investigation_id,
         COUNT(*) AS action_count
-
     FROM core.investigator_actions
-
     GROUP BY investigation_id
 )
-
 SELECT
     e.employee_id,
     e.employee_name,
     e.role_name,
-
-    COUNT(DISTINCT i.investigation_id)
-        AS assigned_investigations,
-
-    COALESCE(SUM(ac.action_count), 0)
-        AS total_actions,
-
+    COUNT(DISTINCT i.investigation_id) AS assigned_investigations,
+    COALESCE(SUM(ac.action_count), 0)  AS total_actions,
     ROUND(
-        COALESCE(SUM(ac.action_count), 0)::NUMERIC
-        /
-        NULLIF(COUNT(DISTINCT i.investigation_id), 0),
-        2
+        COALESCE(SUM(ac.action_count), 0)::NUMERIC/ NULLIF(COUNT(DISTINCT i.investigation_id), 0), 2
     ) AS avg_actions_per_investigation
-
 FROM core.employees e
-
 JOIN core.investigations i
     ON e.employee_id = i.investigator_id
-
 LEFT JOIN action_counts ac
     ON i.investigation_id = ac.investigation_id
-
 WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
 )
-
 GROUP BY
     e.employee_id,
     e.employee_name,
     e.role_name
-
 ORDER BY avg_actions_per_investigation DESC;
 
 
