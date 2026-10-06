@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific
+# Ad-hoc query exports and data dumps (keep data out of the repo)
+*.csv
+*.parquet
+*.dump
+*.backup
+# Power BI temporary / lock files
+~$*.pbix
+*.pbix.bak
+# Editors and OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,9 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS raw;
-CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS core;
 CREATE SCHEMA IF NOT EXISTS analytics;
 CREATE SCHEMA IF NOT EXISTS reference;
-CREATE SCHEMA IF NOT EXISTS model_governance;
 
 CREATE TABLE IF NOT EXISTS core.customers (
     customer_id              VARCHAR(20) PRIMARY KEY,
@@ -29,25 +26,6 @@ CREATE TABLE IF NOT EXISTS core.accounts (
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_accounts_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES core.customers(customer_id)
-);
-
-CREATE TABLE IF NOT EXISTS core.customer_kyc (
-    kyc_id                      BIGSERIAL PRIMARY KEY,
-    customer_id                 VARCHAR(20) NOT NULL,
-    kyc_level                   VARCHAR(30),
-    kyc_status                  VARCHAR(30),
-    source_of_funds             VARCHAR(100),
-    source_of_wealth            VARCHAR(100),
-    expected_monthly_income     NUMERIC(18,2),
-    expected_monthly_txn_volume NUMERIC(18,2),
-    occupation_risk_rating      VARCHAR(20),
-    last_review_date            DATE,
-    next_review_date            DATE,
-    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_customer_kyc_customer
         FOREIGN KEY (customer_id)
         REFERENCES core.customers(customer_id)
 );
@@ -244,15 +222,6 @@ CREATE TABLE IF NOT EXISTS core.login_events (
         REFERENCES core.ip_addresses(ip_id)
 );
 
-CREATE TABLE IF NOT EXISTS reference.exchange_rates (
-    exchange_rate_id BIGSERIAL PRIMARY KEY,
-    rate_date        DATE NOT NULL,
-    from_currency    VARCHAR(10) NOT NULL,
-    to_currency      VARCHAR(10) NOT NULL,
-    exchange_rate    NUMERIC(18,6) NOT NULL,
-    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS core.transactions (
     transaction_id        VARCHAR(30) PRIMARY KEY,
     account_id            VARCHAR(20) NOT NULL,
@@ -412,209 +381,6 @@ CREATE TABLE IF NOT EXISTS core.sar_reports (
         REFERENCES core.customers(customer_id)
 );
 
-CREATE TABLE IF NOT EXISTS reference.watchlists (
-    watchlist_id        VARCHAR(30) PRIMARY KEY,
-    watchlist_source    VARCHAR(100),
-    entity_name         VARCHAR(200),
-    entity_type         VARCHAR(50),
-    country             VARCHAR(50),
-    risk_category       VARCHAR(50),
-    active_flag         BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS core.watchlist_matches (
-    match_id            VARCHAR(30) PRIMARY KEY,
-    customer_id         VARCHAR(20) NOT NULL,
-    watchlist_id        VARCHAR(30) NOT NULL,
-    match_score         NUMERIC(8,4),
-    match_status        VARCHAR(30),
-    reviewed_by         VARCHAR(20),
-    review_date         DATE,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_watchlist_match_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES core.customers(customer_id),
-
-    CONSTRAINT fk_watchlist_match_watchlist
-        FOREIGN KEY (watchlist_id)
-        REFERENCES reference.watchlists(watchlist_id),
-
-    CONSTRAINT fk_watchlist_match_employee
-        FOREIGN KEY (reviewed_by)
-        REFERENCES core.employees(employee_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.entity_links (
-    entity_link_id       BIGSERIAL PRIMARY KEY,
-    source_customer_id   VARCHAR(20) NOT NULL,
-    linked_customer_id   VARCHAR(20) NOT NULL,
-    link_type            VARCHAR(50),
-    match_score          NUMERIC(8,4),
-    match_reason         TEXT,
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_entity_source_customer
-        FOREIGN KEY (source_customer_id)
-        REFERENCES core.customers(customer_id),
-
-    CONSTRAINT fk_entity_linked_customer
-        FOREIGN KEY (linked_customer_id)
-        REFERENCES core.customers(customer_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.graph_nodes (
-    node_id       VARCHAR(50) PRIMARY KEY,
-    node_type     VARCHAR(50),
-    source_table  VARCHAR(100),
-    source_id     VARCHAR(50),
-    risk_score    NUMERIC(8,2),
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS analytics.graph_edges (
-    edge_id             BIGSERIAL PRIMARY KEY,
-    source_node_id      VARCHAR(50) NOT NULL,
-    target_node_id      VARCHAR(50) NOT NULL,
-    relationship_type   VARCHAR(50),
-    edge_weight         NUMERIC(18,4),
-    first_seen_date     DATE,
-    last_seen_date      DATE,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_graph_edge_source
-        FOREIGN KEY (source_node_id)
-        REFERENCES analytics.graph_nodes(node_id),
-
-    CONSTRAINT fk_graph_edge_target
-        FOREIGN KEY (target_node_id)
-        REFERENCES analytics.graph_nodes(node_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.graph_communities (
-    community_id       VARCHAR(50) PRIMARY KEY,
-    community_type     VARCHAR(50),
-    community_risk_score NUMERIC(8,2),
-    description        TEXT,
-    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS analytics.node_centrality_scores (
-    node_id              VARCHAR(50) PRIMARY KEY,
-    degree_centrality    NUMERIC(18,8),
-    betweenness_centrality NUMERIC(18,8),
-    pagerank_score       NUMERIC(18,8),
-    community_id         VARCHAR(50),
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_node_centrality_node
-        FOREIGN KEY (node_id)
-        REFERENCES analytics.graph_nodes(node_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.customer_risk_scores (
-    customer_id        VARCHAR(20) NOT NULL,
-    score_date         DATE NOT NULL,
-    risk_score         NUMERIC(8,2),
-    risk_band          VARCHAR(20),
-    top_risk_driver_1  VARCHAR(100),
-    top_risk_driver_2  VARCHAR(100),
-    top_risk_driver_3  VARCHAR(100),
-    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (customer_id, score_date),
-
-    CONSTRAINT fk_customer_risk_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES core.customers(customer_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.transaction_risk_scores (
-    transaction_id     VARCHAR(30) PRIMARY KEY,
-    score_date         DATE NOT NULL,
-    risk_score         NUMERIC(8,2),
-    risk_band          VARCHAR(20),
-    model_version      VARCHAR(50),
-    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_txn_risk_transaction
-        FOREIGN KEY (transaction_id)
-        REFERENCES core.transactions(transaction_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics.customer_segments (
-    customer_id        VARCHAR(20) NOT NULL,
-    segment_date       DATE NOT NULL,
-    segment_name       VARCHAR(100),
-    segment_description TEXT,
-    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (customer_id, segment_date),
-
-    CONSTRAINT fk_customer_segment_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES core.customers(customer_id)
-);
-
-CREATE TABLE IF NOT EXISTS model_governance.models (
-    model_id          VARCHAR(30) PRIMARY KEY,
-    model_name        VARCHAR(150),
-    model_type        VARCHAR(50),
-    business_purpose  TEXT,
-    owner_team        VARCHAR(100),
-    model_status      VARCHAR(30),
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS model_governance.model_versions (
-    model_version_id  VARCHAR(50) PRIMARY KEY,
-    model_id          VARCHAR(30) NOT NULL,
-    version_number    VARCHAR(20),
-    training_start_date DATE,
-    training_end_date DATE,
-    champion_flag     BOOLEAN DEFAULT FALSE,
-    approval_status   VARCHAR(30),
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_model_versions_model
-        FOREIGN KEY (model_id)
-        REFERENCES model_governance.models(model_id)
-);
-
-CREATE TABLE IF NOT EXISTS model_governance.validation_results (
-    validation_id     BIGSERIAL PRIMARY KEY,
-    model_version_id  VARCHAR(50) NOT NULL,
-    validation_date   DATE,
-    auc_score         NUMERIC(8,4),
-    precision_score   NUMERIC(8,4),
-    recall_score      NUMERIC(8,4),
-    false_positive_rate NUMERIC(8,4),
-    psi_score         NUMERIC(8,4),
-    validation_status VARCHAR(30),
-    validation_notes  TEXT,
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_validation_model_version
-        FOREIGN KEY (model_version_id)
-        REFERENCES model_governance.model_versions(model_version_id)
-);
-
-CREATE TABLE IF NOT EXISTS model_governance.threshold_changes (
-    threshold_change_id BIGSERIAL PRIMARY KEY,
-    model_version_id    VARCHAR(50) NOT NULL,
-    change_date         DATE,
-    old_threshold       NUMERIC(8,4),
-    new_threshold       NUMERIC(8,4),
-    change_reason       TEXT,
-    approved_by         VARCHAR(100),
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_threshold_model_version
-        FOREIGN KEY (model_version_id)
-        REFERENCES model_governance.model_versions(model_version_id)
-);
-
 CREATE INDEX IF NOT EXISTS idx_accounts_customer
 ON core.accounts(customer_id);
 
@@ -653,10 +419,3 @@ ON core.login_events(customer_id);
 
 CREATE INDEX IF NOT EXISTS idx_login_timestamp
 ON core.login_events(login_timestamp);
-
-CREATE INDEX IF NOT EXISTS idx_graph_edges_source
-ON analytics.graph_edges(source_node_id);
-
-CREATE INDEX IF NOT EXISTS idx_graph_edges_target
-ON analytics.graph_edges(target_node_id);
-
