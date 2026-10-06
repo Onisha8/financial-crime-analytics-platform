@@ -385,13 +385,9 @@ CREATE VIEW analytics.vw_investigator_performance AS
 SELECT
     e.employee_id,
 
-    CONCAT(
-        e.first_name,
-        ' ',
-        e.last_name
-    ) AS investigator_name,
+    e.employee_name AS investigator_name,
 
-    e.role,
+    e.role_name AS role,
 
     e.workload_capacity,
 
@@ -488,7 +484,7 @@ FROM core.employees e
 LEFT JOIN core.investigations i
     ON e.employee_id = i.investigator_id
 
-WHERE e.role IN (
+WHERE e.role_name IN (
     'Investigator I',
     'Senior Investigator',
     'Lead Investigator'
@@ -496,9 +492,8 @@ WHERE e.role IN (
 
 GROUP BY
     e.employee_id,
-    e.first_name,
-    e.last_name,
-    e.role,
+    e.employee_name,
+    e.role_name,
     e.workload_capacity;
 
 
