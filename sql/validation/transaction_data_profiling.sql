@@ -1,4 +1,5 @@
--- Run basic transaction data quality checks
+-- Transaction data profiling (exploratory).
+-- Pass/fail data quality checks live in validation_suite.sql.
 -- 1. Total transactions
 SELECT COUNT(*) AS transaction_count
 FROM core.transactions;
@@ -33,10 +34,3 @@ SELECT
 FROM core.transactions
 GROUP BY 1
 ORDER BY 1;
-
--- Create suspicious scenario label columns
-ALTER TABLE core.transactions
-ADD COLUMN IF NOT EXISTS suspicious_flag BOOLEAN DEFAULT FALSE;
-
-ALTER TABLE core.transactions
-ADD COLUMN IF NOT EXISTS scenario_type VARCHAR(100);

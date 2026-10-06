@@ -259,6 +259,8 @@ CREATE TABLE IF NOT EXISTS core.transactions (
     destination_country   VARCHAR(50),
     transaction_status    VARCHAR(30),
     created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    suspicious_flag       BOOLEAN DEFAULT FALSE,   -- synthetic scenario label set by sql/01_alert_generation
+    scenario_type         VARCHAR(100),
 
     CONSTRAINT fk_txn_account
         FOREIGN KEY (account_id)
