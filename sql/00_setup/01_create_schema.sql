@@ -30,6 +30,25 @@ CREATE TABLE IF NOT EXISTS core.accounts (
         REFERENCES core.customers(customer_id)
 );
 
+CREATE TABLE IF NOT EXISTS core.customer_kyc (
+    kyc_id                      BIGSERIAL PRIMARY KEY,
+    customer_id                 VARCHAR(20) NOT NULL,
+    kyc_level                   VARCHAR(30),
+    kyc_status                  VARCHAR(30),
+    source_of_funds             VARCHAR(100),
+    source_of_wealth            VARCHAR(100),
+    expected_monthly_income     NUMERIC(18,2),
+    expected_monthly_txn_volume NUMERIC(18,2),
+    occupation_risk_rating      VARCHAR(20),
+    last_review_date            DATE,
+    next_review_date            DATE,
+    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_customer_kyc_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES core.customers(customer_id)
+);
+
 CREATE TABLE IF NOT EXISTS core.customer_addresses (
     address_id      BIGSERIAL PRIMARY KEY,
     customer_id     VARCHAR(20) NOT NULL,
