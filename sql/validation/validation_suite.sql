@@ -591,6 +591,30 @@ FROM analytics.vw_network_relationships
 CROSS JOIN base b
 GROUP BY b.relationships
 
+UNION ALL
+SELECT 'PB12', 'Power BI layer', 'Reconciliation', 'Error',
+       'Threshold simulation baseline (lowest threshold) retains all alerts / SARs',
+       b.alerts || ' / ' || b.sars,
+       t.alerts_retained || ' / ' || t.sars_retained,
+       t.alerts_retained = b.alerts AND t.sars_retained = b.sars
+FROM analytics.vw_tm_threshold_simulation t
+CROSS JOIN base b
+WHERE t.threshold = (SELECT MIN(threshold) FROM analytics.vw_tm_threshold_simulation)
+
+UNION ALL
+SELECT 'PB13', 'Power BI layer', 'Business rule', 'Error',
+       'Threshold simulation: retained alerts/cases/SARs never increase as threshold rises',
+       '0 rows',
+       COUNT(*) FILTER (WHERE alerts_retained > prev_alerts OR cases_retained > prev_cases OR sars_retained > prev_sars)::TEXT,
+       COUNT(*) FILTER (WHERE alerts_retained > prev_alerts OR cases_retained > prev_cases OR sars_retained > prev_sars) = 0
+FROM (
+    SELECT alerts_retained, cases_retained, sars_retained,
+           LAG(alerts_retained) OVER (ORDER BY threshold) AS prev_alerts,
+           LAG(cases_retained)  OVER (ORDER BY threshold) AS prev_cases,
+           LAG(sars_retained)   OVER (ORDER BY threshold) AS prev_sars
+    FROM analytics.vw_tm_threshold_simulation
+) s
+
 /* ------------------------------------------------------------
    SN — v1.0 documented baseline (update deliberately after regeneration)
    ------------------------------------------------------------ */
