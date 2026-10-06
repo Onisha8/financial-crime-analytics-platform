@@ -136,6 +136,18 @@ FROM core.alerts a
 LEFT JOIN reference.alert_rules r ON r.rule_id = a.rule_id
 WHERE r.rule_id IS NULL
 
+UNION ALL
+SELECT 'DQ11', 'Data quality', 'Lifecycle', 'Error',
+       'No transaction before the customer was onboarded or the account was opened',
+       '0 rows',
+       COUNT(*)::TEXT,
+       COUNT(*) = 0
+FROM core.transactions t
+JOIN core.customers c ON c.customer_id = t.customer_id
+JOIN core.accounts  a ON a.account_id  = t.account_id
+WHERE t.transaction_timestamp::DATE < c.customer_since
+   OR t.transaction_timestamp::DATE < a.open_date
+
 /* ------------------------------------------------------------
    LC — Alert -> investigation -> case -> SAR lifecycle
    ------------------------------------------------------------ */
@@ -614,6 +626,25 @@ FROM (
            LAG(sars_retained)   OVER (ORDER BY threshold) AS prev_sars
     FROM analytics.vw_tm_threshold_simulation
 ) s
+
+UNION ALL
+SELECT 'PB14', 'Power BI layer', 'Reconciliation', 'Error',
+       'TM008 scenario S0 (current rule) = TM008 alerts in core.alerts',
+       (SELECT COUNT(*) FROM core.alerts WHERE rule_id = 'TM008')::TEXT,
+       s.alerts::TEXT,
+       s.alerts = (SELECT COUNT(*) FROM core.alerts WHERE rule_id = 'TM008')
+FROM analytics.vw_tm008_tuning_scenarios s
+WHERE s.scenario_id = 'S0'
+
+UNION ALL
+SELECT 'PB15', 'Power BI layer', 'Reconciliation', 'Error',
+       'KYC profile review has one row per customer',
+       b.customers::TEXT || ' unique',
+       COUNT(DISTINCT k.customer_id)::TEXT || ' unique / ' || COUNT(*)::TEXT || ' rows',
+       COUNT(*) = b.customers AND COUNT(DISTINCT k.customer_id) = b.customers
+FROM analytics.vw_kyc_profile_review k
+CROSS JOIN base b
+GROUP BY b.customers
 
 /* ------------------------------------------------------------
    SN — v1.0 documented baseline (update deliberately after regeneration)

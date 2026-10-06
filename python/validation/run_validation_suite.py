@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "python" / "data_generation"))
@@ -76,7 +77,17 @@ def to_markdown(df: pd.DataFrame, run_at: str) -> str:
 
 def main() -> int:
     run_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-    df = run_suite()
+    try:
+        df = run_suite()
+    except (ProgrammingError, pd.errors.DatabaseError) as exc:
+        # Most common cause: a view the suite checks has not been created yet.
+        # pandas wraps the SQLAlchemy error, so unwrap to the database message.
+        cause = exc.__cause__ if isinstance(exc, pd.errors.DatabaseError) else exc
+        message = str(getattr(cause, "orig", cause)).splitlines()[0]
+        print("Validation suite could not run:")
+        print(f"  {message}")
+        print("Create the missing object by running its SQL file (see sql/), then rerun this script.")
+        return 2
 
     with pd.option_context("display.max_rows", None, "display.max_colwidth", 70, "display.width", 200):
         print(df[["check_id", "check_name", "expected", "actual", "result"]].to_string(index=False))
